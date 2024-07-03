@@ -3,12 +3,6 @@
   hosts: all
   become: yes
 
-  vars:
-    postgresql_version: "16"
-    postgresql_db_name: "mydatabase"
-    postgresql_db_user: "myuser"
-    postgresql_db_password: "mypassword"
-
   tasks:
 
     - name: Comment out pipeline archive in fstab
@@ -61,8 +55,13 @@
     - name: Change peer to trust
       command: "sed -i '/^local/s/peer/trust/' /etc/postgresql/16/main/pg_hba.conf"
 
-    - name: Adding to pg_hba.conf
+    - name: Addition to pg_hba.conf
       lineinfile:
         path: /etc/postgresql/16/main/pg_hba.conf
         line: "host all all 0.0.0.0/0 md5"
         create: yes
+
+    - name: Restarting PostgreSQL
+      service:
+        name: postgresql
+        state: restarted
