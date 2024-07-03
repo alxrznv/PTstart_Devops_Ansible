@@ -1,0 +1,68 @@
+---
+- name: Install and configure PostgreSQL 16 on Debian 10
+  hosts: all
+  become: yes
+
+  vars:
+    postgresql_version: "16"
+    postgresql_db_name: "mydatabase"
+    postgresql_db_user: "myuser"
+    postgresql_db_password: "mypassword"
+
+  tasks:
+
+    - name: Comment out pipeline archive in fstab
+      replace:
+        dest: /etc/apt/sources.list
+        regexp: '^deb cdrom'
+        replace: '#deb_cdrom'
+      tags: update-fstab
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Add PostgreSQL repository to source list
+      shell: echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+
+    - name: Install curl
+      apt:
+        name: curl
+        state: present
+
+    - name: Download PostgreSQL GPG key
+      shell: curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg
+
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+
+    - name: Install PostgreSQL 16
+      apt:
+        name: postgresql-16
+        state: present
+
+    - name: Start PostgreSQL service
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Allow remote connection
+      replace:
+        dest: /etc/postgresql/16/main/postgresql.conf
+        regexp: "^#listen_addresses = 'localhost'"
+        replace: "listen_addresses = '*'"
+      tags: update-fstab
+
+    - name: Change identification to MD5
+      command: "sed -i '/^host/s/ident/md5/' /etc/postgresql/16/main/pg_hba.conf"
+
+    - name: Change peer to trust
+      command: "sed -i '/^local/s/peer/trust/' /etc/postgresql/16/main/pg_hba.conf"
+
+    - name: Adding to pg_hba.conf
+      lineinfile:
+        path: /etc/postgresql/16/main/pg_hba.conf
+        line: "host all all 0.0.0.0/0 md5"
+        create: yes
